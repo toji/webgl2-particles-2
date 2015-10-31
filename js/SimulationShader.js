@@ -59,20 +59,66 @@ var SimulationShader = function (renderer, maxColliders) {
       '  return float((curRandomSeed >> 16) & uint(0x7FFF)) / 32767.0;',
       '}',
 
-      'vec4 runSimulation(vec4 pos) {',
-      '  pos.x = pos.x + (velocity.x * timeDelta);',
-      '  pos.y = pos.y + (velocity.y * timeDelta);',
-      '  pos.z = pos.z + (velocity.z * timeDelta);',
+      'void runSimulation(vec4 pos, vec4 vel, out vec4 outPos, out vec4 outVel) {',
+      '  outPos.x = pos.x + vel.x;',
+      '  outPos.y = pos.y + vel.y;',
+      '  outPos.z = pos.z + vel.z;',
+      '  outPos.w = pos.w;',
+      '  outVel = vel;',
+      '  if (pos.w == 1.0) {',
+      '    outVel = vel * 0.95;', // Cheap drag
+      '    if (length(outVel.xyz) < 0.01) {',
+      '      outPos.w = 0.0;', // Stop moving at some point
+      '      outVel = vec4(0.0, 0.0, 0.0, 0.0);',
+      '    }',
+      '  } /*else {',
+      // This makes particles snap back to their original position after being moved.
+      '    vec3 resetVec = outPos.xyz - origin.xyz;',
+      '    if (length(vel) < length(resetVec)) {',
+      '      outVel = vel - vec4(normalize(resetVec) * 0.005, 0.0);',
+      '    } else {',
+      '      outPos = vec4(origin.xyz, 0.0);',
+      '      outVel = vec4(0.0, 0.0, 0.0, 0.0);',
+      '    }',
+      '  }*/',
 
       // Interaction with fingertips
       '  for (int i = 0; i < ' + maxColliders + '; ++i) {',
       '    vec3 posToCollider = pos.xyz - colliders[i].xyz;',
       '    float dist = colliders[i].w - length(posToCollider);',
       '    if (dist > 0.0) {',
-      '      pos += vec4(normalize(posToCollider) * colliders[i].w, 0.0);',
+      '      vec3 movement = normalize(posToCollider) * colliders[i].w;',
+      '      outPos += vec4(movement, 0.0);',
+      '      outPos.w = 1.0;', // Indicates particles has been interacted with
+      '      outVel = vec4(movement * 0.2, 0.0);',
       '    }',
       '  }',
-      '  return pos;',
+
+      // Interaction with walls
+      '  if (outPos.x < -5.2) {',
+      '    outPos.x += (outPos.x + 5.2) * 2.0;',
+      '    outVel.x *= -1.0;',
+      '  }',
+      '  if (outPos.x > 5.2) {',
+      '    outPos.x += (outPos.x - 5.2) * 2.0;',
+      '    outVel.x *= -1.0;',
+      '  }',
+      '  if (outPos.y < -2.0) {',
+      '    outPos.y += (outPos.y + 2.0) * 2.0;',
+      '    outVel.y *= -1.0;',
+      '  }',
+      '  if (outPos.y > 2.0) {',
+      '    outPos.y += (outPos.y - 2.0) * 2.0;',
+      '    outVel.y *= -1.0;',
+      '  }',
+      '  if (outPos.z < -2.56) {',
+      '    outPos.z += (outPos.z + 2.56) * 2.0;',
+      '    outVel.z *= -1.0;',
+      '  }',
+      '  if (outPos.z > 2.56) {',
+      '    outPos.z += (outPos.z - 2.56) * 2.0;',
+      '    outVel.z *= -1.0;',
+      '  }',
       '}',
 
       'void main() {',
@@ -81,14 +127,16 @@ var SimulationShader = function (renderer, maxColliders) {
 
       // Randomly end the life of the particle and reset it to it's original position
       '  if ( rand() > 0.97 ) {',
-      '    pos = vec4(origin.xyz, 0.0);',
+      '    outPosition = vec4(origin.xyz, 0.0);',
+      // This velocity reset should be in sync with the initialization values in index.html
+      '    outVelocity = vec4((rand()-0.5) * 0.004,',
+      '                       (rand()-0.5) * 0.004,',
+      '                       (rand()-0.5) * 0.004,',
+      '                       0.0);',
       '  } else {',
-      '    pos = runSimulation(pos);',
+      '    runSimulation(position, velocity, outPosition, outVelocity);',
       '  }',
 
-      '  // Write new attributes out',
-      '  outPosition = pos;',
-      '  outVelocity = velocity;',
       '  outRandomSeed = curRandomSeed;',
       '}'
     ].join( '\n' ) );
@@ -166,7 +214,7 @@ var SimulationShader = function (renderer, maxColliders) {
     bind: function() {
       gl.useProgram(program);
       gl.uniform1f(uniforms.time, timeValue);
-      gl.uniform1f(uniforms.timeDelta, timeDelta * 0.0001);
+      gl.uniform1f(uniforms.timeDelta, timeDelta);
       gl.uniform4fv(uniforms.colliders, collidersValue);
     },
 
@@ -180,6 +228,10 @@ var SimulationShader = function (renderer, maxColliders) {
       }
       timeValue = time;
     },
+
+    getTime: function ( time ) {
+      return timeValue;
+    }
 
   }
 
