@@ -8200,10 +8200,12 @@ THREE.Face4 = function ( a, b, c, d, normal, color, materialIndex ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-THREE.BufferAttribute = function ( array, itemSize ) {
+THREE.BufferAttribute = function ( array, itemSize, normalized, isIntegerAttribute ) {
 
 	this.array = array;
 	this.itemSize = itemSize;
+	this.normalized = !!normalized;
+	this.isIntegerAttribute = !!isIntegerAttribute;
 	this._glType = undefined;
 	this._glSize = 0;
 
@@ -8303,7 +8305,7 @@ THREE.BufferAttribute.prototype = {
 
 	clone: function () {
 
-		return new THREE.BufferAttribute( new this.array.constructor( this.array ), this.itemSize );
+		return new THREE.BufferAttribute( new this.array.constructor( this.array ), this.itemSize, this.normalized, this.isIntegerAttribute );
 
 	},
 
@@ -19909,7 +19911,12 @@ THREE.WebGLRenderer = function ( parameters ) {
 					enableAttribute( programAttribute );
 
 					geometryAttribute._computeGLTypeAndSize(_gl);
-					_gl.vertexAttribPointer( programAttribute, size, geometryAttribute._glType, false, 0, startIndex * size * geometryAttribute._glSize );
+
+					if (geometryAttribute.isIntegerAttribute) {
+						_gl.vertexAttribIPointer( programAttribute, size, geometryAttribute._glType, 0, startIndex * size * geometryAttribute._glSize );
+					} else {
+						_gl.vertexAttribPointer( programAttribute, size, geometryAttribute._glType, geometryAttribute.normalized, 0, startIndex * size * geometryAttribute._glSize );
+					}
 
 				} else if ( material.defaultAttributeValues !== undefined ) {
 

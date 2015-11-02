@@ -104,6 +104,8 @@
       var height = getQueryValue('height', 1024);
       var pointSize = getQueryValue('pointSize', 1);
 
+      var INT_MAX = 2147483647;
+
       var maxFingers = 42;
       var fingers = [];
       var fingertipSize = 0.18;
@@ -209,9 +211,15 @@
             velData[ i + 3 ] = 0.0;
           }
 
+          var randomSeedData = new Uint32Array( width * height );
+          for ( var i = 0; i < randomSeedData.length; ++i ) {
+            randomSeedData[ i ] = Math.random() * INT_MAX;
+          }
+
           geometry = new THREE.BufferGeometry();
           geometry.addAttribute( 'position', new THREE.BufferAttribute( data, 4 ) );
           geometry.addAttribute( 'velocity', new THREE.BufferAttribute( velData, 4 ) );
+          geometry.addAttribute( 'randomSeed', new THREE.BufferAttribute( randomSeedData, 1, false, true ) );
           geometry2 = geometry.clone();
 
           material = new THREE.ShaderMaterial( {
@@ -320,8 +328,10 @@
 
         var sourcePosAttrib = source.attributes['position'];
         var sourceVelAttrib = source.attributes['velocity'];
+        var sourceRandomSeedAttrib = source.attributes['randomSeed'];
         var targetPosAttrib = target.attributes['position'];
         var targetVelAttrib = target.attributes['velocity'];
+        var targetRandomSeedAttrib = target.attributes['randomSeed'];
 
         if (targetPosAttrib.buffer && sourcePosAttrib.buffer) {
           shader.bind();
@@ -338,9 +348,14 @@
           gl.bindBuffer(gl.ARRAY_BUFFER, originBuffer);
           gl.vertexAttribPointer( shader.attributes.origin, 4, gl.FLOAT, false, 16, 0 );
 
+          gl.enableVertexAttribArray( shader.attributes.randomSeed );
+          gl.bindBuffer(gl.ARRAY_BUFFER, sourceRandomSeedAttrib.buffer);
+          gl.vertexAttribIPointer( shader.attributes.randomSeed, 1, gl.UNSIGNED_INT, 0, 0 );
+
           gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, transformFeedback);
           gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, targetPosAttrib.buffer);
           gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, targetVelAttrib.buffer);
+          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, targetRandomSeedAttrib.buffer);
 
           gl.enable(gl.RASTERIZER_DISCARD);
           gl.beginTransformFeedback(gl.POINTS);
@@ -354,6 +369,7 @@
           // to bind it to ARRAY_BUFFER work.
           gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
           gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, null);
+          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, null);
 
           gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
         }
