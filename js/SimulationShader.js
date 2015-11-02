@@ -28,6 +28,7 @@ var SimulationShader = function (renderer, maxColliders) {
     position: 0,
     velocity: 1,
     origin: 2,
+    randomSeed: 3,
   };
 
   function createProgram () {
@@ -40,16 +41,22 @@ var SimulationShader = function (renderer, maxColliders) {
       'in vec4 position;',
       'in vec4 velocity;',
       'in vec4 origin;',
+      'in highp uint randomSeed;',
 
       'out vec4 outPosition;',
       'out vec4 outVelocity;',
+      'flat out highp uint outRandomSeed;',
 
       'uniform float time;',
       'uniform float timeDelta;',
       'uniform vec4 colliders[' + maxColliders + '];',
 
-      'float rand(vec2 co){',
-      '  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);',
+      'highp uint curRandomSeed;',
+
+      'float rand(){',
+      // Use Microsoft's Visual C++ constants for the linear congruential generator
+      '  curRandomSeed = (uint(214013) * curRandomSeed + uint(2531011));',
+      '  return float((curRandomSeed >> 16) & uint(0x7FFF)) / 32767.0;',
       '}',
 
       'vec4 runSimulation(vec4 pos) {',
@@ -70,9 +77,10 @@ var SimulationShader = function (renderer, maxColliders) {
 
       'void main() {',
       '  vec4 pos = position;',
+      '  curRandomSeed = randomSeed;',
 
       // Randomly end the life of the particle and reset it to it's original position
-      '  if ( rand(position.xy + time) > 0.97 ) {',
+      '  if ( rand() > 0.97 ) {',
       '    pos = vec4(origin.xyz, 0.0);',
       '  } else {',
       '    pos = runSimulation(pos);',
@@ -81,6 +89,7 @@ var SimulationShader = function (renderer, maxColliders) {
       '  // Write new attributes out',
       '  outPosition = pos;',
       '  outVelocity = velocity;',
+      '  outRandomSeed = curRandomSeed;',
       '}'
     ].join( '\n' ) );
 
@@ -118,7 +127,7 @@ var SimulationShader = function (renderer, maxColliders) {
       gl.bindAttribLocation( program, attributes[i], i );
     }
 
-    gl.transformFeedbackVaryings( program, ["outPosition", "outVelocity"], gl.SEPARATE_ATTRIBS );
+    gl.transformFeedbackVaryings( program, ["outPosition", "outVelocity", "outRandomSeed"], gl.SEPARATE_ATTRIBS );
 
     gl.linkProgram( program );
 

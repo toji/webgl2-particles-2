@@ -8200,13 +8200,16 @@ THREE.Face4 = function ( a, b, c, d, normal, color, materialIndex ) {
  * @author mrdoob / http://mrdoob.com/
  */
 
-THREE.BufferAttribute = function ( array, itemSize ) {
+THREE.BufferAttribute = function ( array, itemSize, normalized, isIntegerAttribute ) {
 
 	this.array = array;
 	this.itemSize = itemSize;
+	this.normalized = !!normalized;
+	this.isIntegerAttribute = !!isIntegerAttribute;
+	this._glType = undefined;
+	this._glSize = 0;
 
 	this.needsUpdate = false;
-
 };
 
 THREE.BufferAttribute.prototype = {
@@ -8302,10 +8305,61 @@ THREE.BufferAttribute.prototype = {
 
 	clone: function () {
 
-		return new THREE.BufferAttribute( new this.array.constructor( this.array ), this.itemSize );
+		return new THREE.BufferAttribute( new this.array.constructor( this.array ), this.itemSize, this.normalized, this.isIntegerAttribute );
 
+	},
+
+	_computeGLTypeAndSize: function(gl) {
+		if (!this._glType) {
+			this._glSize = this.array.BYTES_PER_ELEMENT;
+
+			if (this.array instanceof Float32Array) {
+				this._glType = gl.FLOAT;
+				return;
+			}
+
+			if (this.array instanceof Uint8ClampedArray) {
+				this._glType = gl.UNSIGNED_BYTE;
+				return;
+			}
+
+			if (this.array instanceof Uint8Array) {
+				this._glType = gl.UNSIGNED_BYTE;
+				return;
+			}
+
+			if (this.array instanceof Int8Array) {
+				this._glType = gl.BYTE;
+				return;
+			}
+
+			if (this.array instanceof Uint16Array) {
+				this._glType = gl.UNSIGNED_SHORT;
+				return;
+			}
+
+			if (this.array instanceof Int16Array) {
+				this._glType = gl.SHORT;
+				return;
+			}
+
+			if (this.array instanceof Uint32Array) {
+				this._glType = gl.UNSIGNED_INT;
+				return;
+			}
+
+			if (this.array instanceof Int32Array) {
+				this._glType = gl.INT;
+				return;
+			}
+
+			if (this.array instanceof Float64Array) {
+				throw 'Float64Arrays not supported as vertex attributes.'
+			}
+
+			throw 'Unknown array type in BufferAttribute.'
+		}
 	}
-
 };
 
 //
@@ -19856,7 +19910,13 @@ THREE.WebGLRenderer = function ( parameters ) {
 
 					enableAttribute( programAttribute );
 
-					_gl.vertexAttribPointer( programAttribute, size, _gl.FLOAT, false, 0, startIndex * size * 4 ); // 4 bytes per Float32
+					geometryAttribute._computeGLTypeAndSize(_gl);
+
+					if (geometryAttribute.isIntegerAttribute) {
+						_gl.vertexAttribIPointer( programAttribute, size, geometryAttribute._glType, 0, startIndex * size * geometryAttribute._glSize );
+					} else {
+						_gl.vertexAttribPointer( programAttribute, size, geometryAttribute._glType, geometryAttribute.normalized, 0, startIndex * size * geometryAttribute._glSize );
+					}
 
 				} else if ( material.defaultAttributeValues !== undefined ) {
 
