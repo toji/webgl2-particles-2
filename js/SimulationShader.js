@@ -67,20 +67,9 @@ var SimulationShader = function (renderer, maxColliders) {
       '  outVel = vel;',
       '  if (pos.w == 1.0) {',
       '    outVel = vel * 0.95;', // Cheap drag
-      '    if (length(outVel.xyz) < 0.001) {',
-      '      outPos.w = 0.0;', // Stop moving at some point
-      '      outVel = vec4(0.0, 0.0, 0.0, 0.0);',
-      '    }',
-      '  } /*else {',
-      // This makes particles snap back to their original position after being moved.
-      '    vec3 resetVec = outPos.xyz - origin.xyz;',
-      '    if (length(vel) < length(resetVec)) {',
-      '      outVel = vel - vec4(normalize(resetVec) * 0.005, 0.0);',
-      '    } else {',
-      '      outPos = vec4(origin.xyz, 0.0);',
-      '      outVel = vec4(0.0, 0.0, 0.0, 0.0);',
-      '    }',
-      '  }*/',
+      '    vec3 resetVec = normalize(origin.xyz - outPos.xyz) * 0.0005;',
+      '    outVel.xyz += resetVec;',
+      '  }',
 
       // Interaction with fingertips
       '  for (int i = 0; i < ' + maxColliders + '; ++i) {',
@@ -96,7 +85,7 @@ var SimulationShader = function (renderer, maxColliders) {
       '    float forceFieldDist = (colliders[i].w * 2.0 - dist);',
       '    if (forceFieldDist > 0.0) {',
       '      vec2 tangentToCollider = normalize(vec2(posToCollider.y, -posToCollider.x));',
-      '      outVel.xy += tangentToCollider * 0.001;',
+      '      outVel.xy += tangentToCollider * 0.0007;',
       '    }',
       '  }',
 
@@ -133,7 +122,7 @@ var SimulationShader = function (renderer, maxColliders) {
 
       // Randomly end the life of the particle and reset it to it's original position
       // Moved particles reset less frequently.
-      '  float resetRate = (pos.w == 1.0) ? 0.999 : 0.97;',
+      '  float resetRate = (pos.w == 1.0) ? 0.998 : 0.97;',
       '  if ( rand() > resetRate ) {',
       '    outPosition = vec4(origin.xyz, 0.0);',
       // This velocity reset should be in sync with the initialization values in index.html
