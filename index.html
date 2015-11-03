@@ -100,8 +100,7 @@
 
       var fboParticles, rtTexturePos, rtTexturePos2, simulationShader;
 
-      var width = getQueryValue('width', 1024);
-      var height = getQueryValue('height', 1024);
+      var particleCount = getQueryValue('particleCount', 500000);
       var pointSize = getQueryValue('pointSize', 1);
 
       var INT_MAX = 2147483647;
@@ -193,9 +192,9 @@
             (bounds.max.y - bounds.min.y) * -0.5,
             (bounds.max.z - bounds.min.z) * -0.5));
 
-          points = THREE.GeometryUtils.randomPointsInGeometry( textGeo, width * height );
+          points = THREE.GeometryUtils.randomPointsInGeometry( textGeo, particleCount );
 
-          data = new Float32Array( width * height * 4 );
+          data = new Float32Array( particleCount * 4 );
           for ( var i = 0, j = 0, l = data.length; i < l; i += 4, j += 1 ) {
             data[ i ] = points[ j ].x;
             data[ i + 1 ] = points[ j ].y;
@@ -203,15 +202,15 @@
             data[ i + 3 ] = 0.0;
           }
 
-          var velData = new Float32Array( width * height * 4 );
+          var velData = new Float32Array( particleCount * 4 );
           for ( var i = 0, l = velData.length; i < l; i += 4 ) {
-            velData[ i ] = (Math.random() - 0.5) * 2.0;
-            velData[ i + 1 ] = (Math.random() - 0.5) * 2.0;
-            velData[ i + 2 ] = (Math.random() - 0.5) * 2.0;
+            velData[ i ] = (Math.random() - 0.5) * 0.004;
+            velData[ i + 1 ] = (Math.random() - 0.5) * 0.004;
+            velData[ i + 2 ] = (Math.random() - 0.5) * 0.004;
             velData[ i + 3 ] = 0.0;
           }
 
-          var randomSeedData = new Uint32Array( width * height );
+          var randomSeedData = new Uint32Array( particleCount );
           for ( var i = 0; i < randomSeedData.length; ++i ) {
             randomSeedData[ i ] = Math.random() * INT_MAX;
           }
@@ -375,27 +374,37 @@
         }
       }
 
-      var count = 0;
+      var frameId = 0;
+      var fixedStep = 16.666666;
       function render(t) {
         requestAnimationFrame(render);
 
         updateHands();
 
         if (isWebGL2) {
-          simulationShader.setTime(t);
+          var lastTime = simulationShader.getTime(t);
+          if (t - lastTime > fixedStep * 5) {
+            simulationShader.setTime(t);
+            lastTime = t - fixedStep;
+          }
+
+          while (t - lastTime >= fixedStep) {
+            lastTime += fixedStep;
+            simulationShader.setTime(lastTime);
+
+            if ( frameId % 2 === 0 ) {
+              transformFeedbackPass( renderer.context, simulationShader, geometry2, geometry );
+              mesh.geometry = geometry2;
+            } else {
+              transformFeedbackPass( renderer.context, simulationShader, geometry, geometry2 );
+              mesh.geometry = geometry;
+            }
+
+            frameId++;
+          }
 
           // Ugly hack to make the particle mesh always draw last
           scene.remove( mesh ); scene.add( mesh );
-
-          if ( count % 2 === 0 ) {
-            transformFeedbackPass( renderer.context, simulationShader, geometry2, geometry );
-            mesh.geometry = geometry2;
-          } else {
-            transformFeedbackPass( renderer.context, simulationShader, geometry, geometry2 );
-            mesh.geometry = geometry;
-          }
-
-          count ++;
         }
 
         renderer.render( scene, camera );
