@@ -67,7 +67,7 @@ var SimulationShader = function (renderer, maxColliders) {
       '  outVel = vel;',
       '  if (pos.w == 1.0) {',
       '    outVel = vel * 0.95;', // Cheap drag
-      '    if (length(outVel.xyz) < 0.01) {',
+      '    if (length(outVel.xyz) < 0.001) {',
       '      outPos.w = 0.0;', // Stop moving at some point
       '      outVel = vec4(0.0, 0.0, 0.0, 0.0);',
       '    }',
@@ -85,12 +85,12 @@ var SimulationShader = function (renderer, maxColliders) {
       // Interaction with fingertips
       '  for (int i = 0; i < ' + maxColliders + '; ++i) {',
       '    vec3 posToCollider = pos.xyz - colliders[i].xyz;',
-      '    float dist = colliders[i].w - length(posToCollider);',
-      '    if (dist > 0.0) {',
+      '    float dist = length(posToCollider);',
+      '    if (dist < colliders[i].w) {',
       '      vec3 movement = normalize(posToCollider) * colliders[i].w;',
       '      outPos += vec4(movement, 0.0);',
       '      outPos.w = 1.0;', // Indicates particles has been interacted with
-      '      outVel = vec4(movement * 0.2, 0.0);',
+      '      outVel += vec4(movement * 0.1, 0.0);',
       '    }',
       '  }',
 
