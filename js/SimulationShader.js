@@ -126,7 +126,9 @@ var SimulationShader = function (renderer, maxColliders) {
       '  curRandomSeed = randomSeed;',
 
       // Randomly end the life of the particle and reset it to it's original position
-      '  if ( rand() > 0.97 ) {',
+      // Moved particles reset less frequently.
+      '  float resetRate = (pos.w == 1.0) ? 0.999 : 0.97;',
+      '  if ( rand() > resetRate ) {',
       '    outPosition = vec4(origin.xyz, 0.0);',
       // This velocity reset should be in sync with the initialization values in index.html
       '    outVelocity = vec4((rand()-0.5) * 0.004,',
