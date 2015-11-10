@@ -109,7 +109,12 @@
       var fingers = [];
       var fingertipSize = 0.18;
       var handOffset = new THREE.Vector3(0,-2.5, 0.0);
+
+      var mouseX, mouseY;
+      var mouseDown = false;
+
       var colliders = new Float32Array(maxFingers * 4);
+      var colliderMeshes = [];
       var showColliders = false;
 
       var leapController = new Leap.Controller();
@@ -149,10 +154,10 @@
 
         for (var i = 0; i < maxFingers; ++i) {
           var finger = {
-            active: false,
-            mesh: new THREE.Mesh(fingerGeometry, fingerMaterial)
+            active: false
           };
-          scene.add(finger.mesh);
+          colliderMeshes[i] = new THREE.Mesh(fingerGeometry, fingerMaterial);
+          scene.add(colliderMeshes[i]);
           fingers.push(finger);
         }
 
@@ -259,6 +264,16 @@
             }
           })
           .connect();
+
+        function onMouseUpdate(ev) {
+          mouseX = (((ev.clientX / canvas.clientWidth) * 2.0) - 1.0) * 4.0;
+          mouseY = (((ev.clientY / canvas.clientHeight) * 2.0) - 1.0) * -4.0;
+          mouseDown = !!ev.buttons;
+        }
+
+        canvas.addEventListener( 'mousedown', onMouseUpdate, false )
+        canvas.addEventListener( 'mouseup', onMouseUpdate, false );
+        canvas.addEventListener( 'mousemove', onMouseUpdate, false );
       }
 
       function onWindowResize() {
@@ -269,16 +284,20 @@
 
       window.addEventListener( 'resize', onWindowResize, false );
 
-      function fingerToCollider(i, size) {
-        var finger = fingers[i];
-        var o = i * 4;
-        if (finger.active) {
-          colliders[o] = finger.mesh.position.x;
-          colliders[o+1] = finger.mesh.position.y;
-          colliders[o+2] = finger.mesh.position.z;
-          colliders[o+3] = size ? size : fingertipSize;
-        } else {
-          colliders[o+3] = -1;
+
+      function pointToCollider(index, active, x, y, z, size) {
+        var o = index * 4;
+        colliders[o] = active ? x : 0;
+        colliders[o+1] = active ? y : 0;
+        colliders[o+2] = active ? z : 0;
+        colliders[o+3] = active ? size : -1;
+
+        colliderMeshes[index].visible = active && showColliders;
+        if (active) {
+          colliderMeshes[index].position.x = x;
+          colliderMeshes[index].position.y = y;
+          colliderMeshes[index].position.z = z;
+          colliderMeshes[index].scale.set(size, size, size);
         }
       }
 
@@ -286,11 +305,15 @@
         if (fi >= fingers.length) return;
         if (!size) { size = fingertipSize; }
         bone.updateMatrixWorld();
-        fingers[fi].active = true;
-        fingers[fi].mesh.visible = showColliders;
-        fingers[fi].mesh.position.setFromMatrixPosition(bone.matrixWorld);
-        fingers[fi].mesh.scale.set(size, size, size);
-        fingerToCollider(fi, size);
+        var finger = fingers[fi];
+        finger.active = true;
+        colliderMeshes[fi].position.setFromMatrixPosition(bone.matrixWorld);
+        pointToCollider(fi,
+                        finger.active,
+                        colliderMeshes[fi].position.x,
+                        colliderMeshes[fi].position.y,
+                        colliderMeshes[fi].position.z,
+                        size);
       }
 
       function updateHands() {
@@ -314,10 +337,14 @@
           }
         }
 
+        if (mouseDown) {
+          pointToCollider(fi, true, mouseX, mouseY, 0.0, 0.2);
+          fi++;
+        }
+
         for (; fi < fingers.length; ++fi) {
           fingers[fi].active = false;
-          fingers[fi].mesh.visible = false;
-          fingerToCollider(fi);
+          pointToCollider(fi, false);
         }
       }
 
