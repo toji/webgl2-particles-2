@@ -114,9 +114,10 @@
       var pickCoord = new THREE.Vector3(0.0, 0.0, 0.0);
       var pickRay = new THREE.Ray();
       var clickPlane = new THREE.Plane(new THREE.Vector3(0.0, 0.0, 1.0), 0.0);
-      
-      var mouseCoord = new THREE.Vector3(0.0, 0.0, 0.0);
-      var mouseDown = false;
+
+      var mouseCoordQueue = [];
+
+      var touchPoints = [];
 
       var colliders = new Float32Array(maxFingers * 4);
       var colliderMeshes = [];
@@ -273,13 +274,27 @@
         function onMouseUpdate(ev) {
           mouseDown = !!ev.buttons;
           if (mouseDown) {
-            mouseCoord = canvasToColliderVector(ev.clientX, ev.clientY);
+            mouseCoordQueue.push(canvasToColliderVector(ev.clientX, ev.clientY));
           }
         }
 
         canvas.addEventListener( 'mousedown', onMouseUpdate, false )
         canvas.addEventListener( 'mouseup', onMouseUpdate, false );
         canvas.addEventListener( 'mousemove', onMouseUpdate, false );
+
+        function onTouchUpdate(ev) {
+          var touches = event.touches;
+          touchPoints = [];
+          for(var i = 0; i < touches.length; ++i) {
+            var touch = touches[i];
+            touchPoints.push(canvasToColliderVector(touch.clientX, touch.clientY));
+          }
+          ev.preventDefault();
+        }
+
+        canvas.addEventListener( 'touchstart', onTouchUpdate, false )
+        canvas.addEventListener( 'touchend', onTouchUpdate, false );
+        canvas.addEventListener( 'touchmove', onTouchUpdate, false );
       }
 
       function onWindowResize() {
@@ -349,8 +364,13 @@
           }
         }
 
-        if (mouseDown && mouseCoord) {
-          pointToCollider(fi, true, mouseCoord, 0.2);
+        if (mouseCoordQueue.length) {
+          pointToCollider(fi, true, mouseCoordQueue.shift(), 0.2);
+          fi++;
+        }
+
+        for (var i = 0; i < touchPoints.length; ++i) {
+          pointToCollider(fi, true, touchPoints[i], 0.2);
           fi++;
         }
 
