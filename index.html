@@ -284,7 +284,6 @@
 
         function onTouchUpdate(ev) {
           var touches = event.touches;
-          touchPoints = [];
           for(var i = 0; i < touches.length; ++i) {
             var touch = touches[i];
             touchPoints.push(canvasToColliderVector(touch.clientX, touch.clientY));
@@ -369,8 +368,8 @@
           fi++;
         }
 
-        for (var i = 0; i < touchPoints.length; ++i) {
-          pointToCollider(fi, true, touchPoints[i], 0.2);
+        while (touchPoints.length) {
+          pointToCollider(fi, true, touchPoints.shift(), 0.2);
           fi++;
         }
 
