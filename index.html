@@ -364,7 +364,7 @@
           }
         }
 
-        if (mouseCoordQueue.length) {
+        while (mouseCoordQueue.length) {
           pointToCollider(fi, true, mouseCoordQueue.shift(), 0.2);
           fi++;
         }
