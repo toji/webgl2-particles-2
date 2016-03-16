@@ -7,114 +7,22 @@ THREE.GeometryUtils = {
 
 	// Merge two geometries or geometry and geometry from object (using object's transform)
 
-	merge: function ( geometry1, object2 /* mesh | geometry */, materialIndexOffset ) {
+	merge: function ( geometry1, geometry2, materialIndexOffset ) {
 
-		var matrix, normalMatrix,
-		vertexOffset = geometry1.vertices.length,
-		uvPosition = geometry1.faceVertexUvs[ 0 ].length,
-		geometry2 = object2 instanceof THREE.Mesh ? object2.geometry : object2,
-		vertices1 = geometry1.vertices,
-		vertices2 = geometry2.vertices,
-		faces1 = geometry1.faces,
-		faces2 = geometry2.faces,
-		uvs1 = geometry1.faceVertexUvs[ 0 ],
-		uvs2 = geometry2.faceVertexUvs[ 0 ];
+		console.warn( 'THREE.GeometryUtils: .merge() has been moved to Geometry. Use geometry.merge( geometry2, matrix, materialIndexOffset ) instead.' );
 
-		if ( materialIndexOffset === undefined ) materialIndexOffset = 0;
+		var matrix;
 
-		if ( object2 instanceof THREE.Mesh ) {
+		if ( geometry2 instanceof THREE.Mesh ) {
 
-			object2.matrixAutoUpdate && object2.updateMatrix();
+			geometry2.matrixAutoUpdate && geometry2.updateMatrix();
 
-			matrix = object2.matrix;
-
-			normalMatrix = new THREE.Matrix3().getNormalMatrix( matrix );
+			matrix = geometry2.matrix;
+			geometry2 = geometry2.geometry;
 
 		}
 
-		// vertices
-
-		for ( var i = 0, il = vertices2.length; i < il; i ++ ) {
-
-			var vertex = vertices2[ i ];
-
-			var vertexCopy = vertex.clone();
-
-			if ( matrix ) vertexCopy.applyMatrix4( matrix );
-
-			vertices1.push( vertexCopy );
-
-		}
-
-		// faces
-
-		for ( i = 0, il = faces2.length; i < il; i ++ ) {
-
-			var face = faces2[ i ], faceCopy, normal, color,
-			faceVertexNormals = face.vertexNormals,
-			faceVertexColors = face.vertexColors;
-
-			faceCopy = new THREE.Face3( face.a + vertexOffset, face.b + vertexOffset, face.c + vertexOffset );
-			faceCopy.normal.copy( face.normal );
-
-			if ( normalMatrix ) {
-
-				faceCopy.normal.applyMatrix3( normalMatrix ).normalize();
-
-			}
-
-			for ( var j = 0, jl = faceVertexNormals.length; j < jl; j ++ ) {
-
-				normal = faceVertexNormals[ j ].clone();
-
-				if ( normalMatrix ) {
-
-					normal.applyMatrix3( normalMatrix ).normalize();
-
-				}
-
-				faceCopy.vertexNormals.push( normal );
-
-			}
-
-			faceCopy.color.copy( face.color );
-
-			for ( var j = 0, jl = faceVertexColors.length; j < jl; j ++ ) {
-
-				color = faceVertexColors[ j ];
-				faceCopy.vertexColors.push( color.clone() );
-
-			}
-
-			faceCopy.materialIndex = face.materialIndex + materialIndexOffset;
-
-			faceCopy.centroid.copy( face.centroid );
-
-			if ( matrix ) {
-
-				faceCopy.centroid.applyMatrix4( matrix );
-
-			}
-
-			faces1.push( faceCopy );
-
-		}
-
-		// uvs
-
-		for ( i = 0, il = uvs2.length; i < il; i ++ ) {
-
-			var uv = uvs2[ i ], uvCopy = [];
-
-			for ( var j = 0, jl = uv.length; j < jl; j ++ ) {
-
-				uvCopy.push( new THREE.Vector2( uv[ j ].x, uv[ j ].y ) );
-
-			}
-
-			uvs1.push( uvCopy );
-
-		}
+		geometry1.merge( geometry2, matrix, materialIndexOffset );
 
 	},
 
@@ -130,8 +38,8 @@ THREE.GeometryUtils = {
 
 			var point = new THREE.Vector3();
 
-			var a = THREE.Math.random16();
-			var b = THREE.Math.random16();
+			var a = Math.random();
+			var b = Math.random();
 
 			if ( ( a + b ) > 1 ) {
 
@@ -161,12 +69,12 @@ THREE.GeometryUtils = {
 
 	}(),
 
-	// Get random point in face (triangle / quad)
+	// Get random point in face (triangle)
 	// (uniform distribution)
 
-	randomPointInFace: function ( face, geometry, useCachedAreas ) {
+	randomPointInFace: function ( face, geometry ) {
 
-		var vA, vB, vC, vD;
+		var vA, vB, vC;
 
 		vA = geometry.vertices[ face.a ];
 		vB = geometry.vertices[ face.b ];
@@ -190,7 +98,7 @@ THREE.GeometryUtils = {
 			il = faces.length,
 			totalArea = 0,
 			cumulativeAreas = [],
-			vA, vB, vC, vD;
+			vA, vB, vC;
 
 		// precompute face areas
 
@@ -240,7 +148,7 @@ THREE.GeometryUtils = {
 
 			}
 
-			var result = binarySearch( 0, cumulativeAreas.length - 1 )
+			var result = binarySearch( 0, cumulativeAreas.length - 1 );
 			return result;
 
 		}
@@ -254,11 +162,11 @@ THREE.GeometryUtils = {
 
 		for ( i = 0; i < n; i ++ ) {
 
-			r = THREE.Math.random16() * totalArea;
+			r = Math.random() * totalArea;
 
 			index = binarySearchIndices( r );
 
-			result[ i ] = THREE.GeometryUtils.randomPointInFace( faces[ index ], geometry, true );
+			result[ i ] = THREE.GeometryUtils.randomPointInFace( faces[ index ], geometry );
 
 			if ( ! stats[ index ] ) {
 
@@ -276,8 +184,95 @@ THREE.GeometryUtils = {
 
 	},
 
+	randomPointsInBufferGeometry: function ( geometry, n ) {
+
+		var i,
+			vertices = geometry.attributes.position.array,
+			totalArea = 0,
+			cumulativeAreas = [],
+			vA, vB, vC;
+
+		// precompute face areas
+		vA = new THREE.Vector3();
+		vB = new THREE.Vector3();
+		vC = new THREE.Vector3();
+
+		// geometry._areas = [];
+		var il = vertices.length / 9;
+
+		for ( i = 0; i < il; i ++ ) {
+
+			vA.set( vertices[ i * 9 + 0 ], vertices[ i * 9 + 1 ], vertices[ i * 9 + 2 ] );
+			vB.set( vertices[ i * 9 + 3 ], vertices[ i * 9 + 4 ], vertices[ i * 9 + 5 ] );
+			vC.set( vertices[ i * 9 + 6 ], vertices[ i * 9 + 7 ], vertices[ i * 9 + 8 ] );
+
+			area = THREE.GeometryUtils.triangleArea( vA, vB, vC );
+			totalArea += area;
+
+			cumulativeAreas.push( totalArea );
+
+		}
+
+		// binary search cumulative areas array
+
+		function binarySearchIndices( value ) {
+
+			function binarySearch( start, end ) {
+
+				// return closest larger index
+				// if exact number is not found
+
+				if ( end < start )
+					return start;
+
+				var mid = start + Math.floor( ( end - start ) / 2 );
+
+				if ( cumulativeAreas[ mid ] > value ) {
+
+					return binarySearch( start, mid - 1 );
+
+				} else if ( cumulativeAreas[ mid ] < value ) {
+
+					return binarySearch( mid + 1, end );
+
+				} else {
+
+					return mid;
+
+				}
+
+			}
+
+			var result = binarySearch( 0, cumulativeAreas.length - 1 );
+			return result;
+
+		}
+
+		// pick random face weighted by face area
+
+		var r, index,
+			result = [];
+
+		for ( i = 0; i < n; i ++ ) {
+
+			r = Math.random() * totalArea;
+
+			index = binarySearchIndices( r );
+
+			// result[ i ] = THREE.GeometryUtils.randomPointInFace( faces[ index ], geometry, true );
+			vA.set( vertices[ index * 9 + 0 ], vertices[ index * 9 + 1 ], vertices[ index * 9 + 2 ] );
+			vB.set( vertices[ index * 9 + 3 ], vertices[ index * 9 + 4 ], vertices[ index * 9 + 5 ] );
+			vC.set( vertices[ index * 9 + 6 ], vertices[ index * 9 + 7 ], vertices[ index * 9 + 8 ] );
+			result[ i ] = THREE.GeometryUtils.randomPointInTriangle( vA, vB, vC );
+
+		}
+
+		return result;
+
+	},
+
 	// Get triangle area (half of parallelogram)
-	//	http://mathworld.wolfram.com/TriangleArea.html
+	// http://mathworld.wolfram.com/TriangleArea.html
 
 	triangleArea: function () {
 
@@ -296,61 +291,10 @@ THREE.GeometryUtils = {
 
 	}(),
 
-	// Center geometry so that 0,0,0 is in center of bounding box
-
 	center: function ( geometry ) {
 
-		geometry.computeBoundingBox();
-
-		var bb = geometry.boundingBox;
-
-		var offset = new THREE.Vector3();
-
-		offset.addVectors( bb.min, bb.max );
-		offset.multiplyScalar( -0.5 );
-
-		geometry.applyMatrix( new THREE.Matrix4().makeTranslation( offset.x, offset.y, offset.z ) );
-		geometry.computeBoundingBox();
-
-		return offset;
-
-	},
-
-	triangulateQuads: function ( geometry ) {
-
-		var i, il, j, jl;
-
-		var faces = [];
-		var faceVertexUvs = [];
-
-		for ( i = 0, il = geometry.faceVertexUvs.length; i < il; i ++ ) {
-
-			faceVertexUvs[ i ] = [];
-
-		}
-
-		for ( i = 0, il = geometry.faces.length; i < il; i ++ ) {
-
-			var face = geometry.faces[ i ];
-
-			faces.push( face );
-
-			for ( j = 0, jl = geometry.faceVertexUvs.length; j < jl; j ++ ) {
-
-				faceVertexUvs[ j ].push( geometry.faceVertexUvs[ j ][ i ] );
-
-			}
-
-		}
-
-		geometry.faces = faces;
-		geometry.faceVertexUvs = faceVertexUvs;
-
-		geometry.computeCentroids();
-		geometry.computeFaceNormals();
-		geometry.computeVertexNormals();
-
-		if ( geometry.hasTangents ) geometry.computeTangents();
+		console.warn( 'THREE.GeometryUtils: .center() has been moved to Geometry. Use geometry.center() instead.' );
+		return geometry.center();
 
 	}
 

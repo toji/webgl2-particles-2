@@ -33,15 +33,14 @@
   </head>
   <body>
 
-    <script src="js/three.js"></script>
+    <script src="js/three.min.js"></script>
     <script src="js/SimulationShader.js"></script>
     <script src="js/GeometryUtils.js"></script>
+    <script src="js/Projector.js"></script>
 
     <script src="js/leap-0.6.4.min.js"></script>
     <script src="js/leap-plugins-0.1.6.1.js"></script>
     <script src="js/leap.rigged-hand-0.1.3.min.js"></script>
-
-    <script src="helvetiker_bold.typeface.js"></script>
 
     <!-- WebGL 2 shaders -->
     <script id="vs-particles-2" type="x-shader/x-vertex">
@@ -96,6 +95,7 @@
       var data, texture, points;
       var transformFeedback;
       var originBuffer;
+      var font;
 
       var controls;
 
@@ -167,9 +167,10 @@
           fingers.push(finger);
         }
 
-        var backImage = THREE.ImageUtils.loadTexture("media/Back.png");
-        var ceilImage = THREE.ImageUtils.loadTexture("media/Ceiling.png");
-        var floorImage = THREE.ImageUtils.loadTexture("media/Floor.png");
+        var textureLoader = new THREE.TextureLoader();
+        var backImage = textureLoader.load("media/Back.png");
+        var ceilImage = textureLoader.load("media/Ceiling.png");
+        var floorImage = textureLoader.load("media/Floor.png");
 
         var roomMaterialArray = [
           new THREE.MeshBasicMaterial({ map: backImage, side: THREE.BackSide }),
@@ -187,74 +188,84 @@
 
         if (isWebGL2) {
           // Start Creation of DataTexture
-          var textGeo = new THREE.TextGeometry( "WebGL 2", {
-            size: 1.0,
-            height: 0.25,
-            curveSegments: 0,
-            font: "helvetiker",
-            weight: "bold",
-            style: "normal",
-          });
 
-          textGeo.computeBoundingBox();
-          var bounds = textGeo.boundingBox;
-          textGeo.applyMatrix( new THREE.Matrix4().makeTranslation(
-            (bounds.max.x - bounds.min.x) * -0.5,
-            (bounds.max.y - bounds.min.y) * -0.5,
-            (bounds.max.z - bounds.min.z) * -0.5));
+          var fontLoader = new THREE.FontLoader();
+          fontLoader.load( 'fonts/helvetiker_bold.typeface.js', function ( font ) {
 
-          points = THREE.GeometryUtils.randomPointsInGeometry( textGeo, particleCount );
+            var textGeo = new THREE.TextGeometry( "WebGL 2", {
+              size: 1.0,
+              height: 0.25,
+              curveSegments: 0,
+              font: font,
+              weight: "bold",
+              style: "normal",
+            });
 
-          data = new Float32Array( particleCount * 4 );
-          for ( var i = 0, j = 0, l = data.length; i < l; i += 4, j += 1 ) {
-            data[ i ] = points[ j ].x;
-            data[ i + 1 ] = points[ j ].y;
-            data[ i + 2 ] = points[ j ].z;
-            data[ i + 3 ] = 0.0;
-          }
+            textGeo.computeBoundingBox();
+            var bounds = textGeo.boundingBox;
+            textGeo.applyMatrix( new THREE.Matrix4().makeTranslation(
+              (bounds.max.x - bounds.min.x) * -0.5,
+              (bounds.max.y - bounds.min.y) * -0.5,
+              (bounds.max.z - bounds.min.z) * -0.5));
 
-          var velData = new Float32Array( particleCount * 4 );
-          for ( var i = 0, l = velData.length; i < l; i += 4 ) {
-            velData[ i ] = (Math.random() - 0.5) * 0.004;
-            velData[ i + 1 ] = (Math.random() - 0.5) * 0.004;
-            velData[ i + 2 ] = (Math.random() - 0.5) * 0.004;
-            velData[ i + 3 ] = 0.0;
-          }
+            // THREE.js BUG FIX
+            particleCount = Math.floor(particleCount / 3) * 3;
 
-          var randomSeedData = new Uint32Array( particleCount );
-          for ( var i = 0; i < randomSeedData.length; ++i ) {
-            randomSeedData[ i ] = Math.random() * INT_MAX;
-          }
+            points = THREE.GeometryUtils.randomPointsInGeometry( textGeo, particleCount );
 
-          geometry = new THREE.BufferGeometry();
-          geometry.addAttribute( 'position', new THREE.BufferAttribute( data, 4 ) );
-          geometry.addAttribute( 'velocity', new THREE.BufferAttribute( velData, 4 ) );
-          geometry.addAttribute( 'randomSeed', new THREE.BufferAttribute( randomSeedData, 1, false, true ) );
-          geometry2 = geometry.clone();
+            data = new Float32Array( particleCount * 4 );
+            for ( var i = 0, j = 0, l = data.length; i < l; i += 4, j += 1 ) {
+              data[ i ] = points[ j ].x;
+              data[ i + 1 ] = points[ j ].y;
+              data[ i + 2 ] = points[ j ].z;
+              data[ i + 3 ] = 0.0;
+            }
 
-          material = new THREE.ShaderMaterial( {
-            uniforms: {
-              "pointSize": { type: "f", value: pointSize }
-            },
-            vertexShader: document.getElementById( 'vs-particles-2' ).textContent,
-            fragmentShader: document.getElementById( 'fs-particles-2' ).textContent,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            depthTest: true,
-            transparent: true
+            var velData = new Float32Array( particleCount * 4 );
+            for ( var i = 0, l = velData.length; i < l; i += 4 ) {
+              velData[ i ] = (Math.random() - 0.5) * 0.004;
+              velData[ i + 1 ] = (Math.random() - 0.5) * 0.004;
+              velData[ i + 2 ] = (Math.random() - 0.5) * 0.004;
+              velData[ i + 3 ] = 0.0;
+            }
+
+            var randomSeedData = new Uint32Array( particleCount );
+            for ( var i = 0; i < randomSeedData.length; ++i ) {
+              randomSeedData[ i ] = Math.random() * INT_MAX;
+            }
+
+            geometry = new THREE.BufferGeometry();
+            geometry.addAttribute( 'position', new THREE.BufferAttribute( data, 4 ).setDynamic( true ) );
+            geometry.addAttribute( 'velocity', new THREE.BufferAttribute( velData, 4 ).setDynamic( true ) );
+            geometry.addAttribute( 'randomSeed', new THREE.BufferAttribute( randomSeedData, 1, false, true ).setDynamic( true ) );
+            geometry2 = geometry.clone();
+
+            material = new THREE.ShaderMaterial( {
+              uniforms: {
+                "pointSize": { type: "f", value: pointSize }
+              },
+              vertexShader: document.getElementById( 'vs-particles-2' ).textContent,
+              fragmentShader: document.getElementById( 'fs-particles-2' ).textContent,
+              blending: THREE.AdditiveBlending,
+              depthWrite: false,
+              depthTest: true,
+              transparent: true
+            } );
+
+            transformFeedback = gl.createTransformFeedback();
+
+            originBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, originBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+
+            simulationShader = new SimulationShader(renderer, maxFingers);
+            simulationShader.setColliders(colliders);
+
+            mesh = new THREE.Points(geometry, material);
+            scene.add(mesh);
+
           } );
 
-          transformFeedback = gl.createTransformFeedback();
-
-          originBuffer = gl.createBuffer();
-          gl.bindBuffer(gl.ARRAY_BUFFER, originBuffer);
-          gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-
-          simulationShader = new SimulationShader(renderer, maxFingers);
-          simulationShader.setColliders(colliders);
-
-          mesh = new THREE.PointCloud(geometry, material);
-          scene.add(mesh);
         }
 
         leapController
@@ -342,10 +353,10 @@
         pointToCollider(fi, finger.active, colliderMeshes[fi].position, size);
       }
 
-      function updateHands() {
-        var frame = leapController.frame();
-
+      function updateColliders() {
         var fi = 0;
+
+        var frame = leapController.frame();
         if (frame.hands) {
           for (var i = 0; i < frame.hands.length; ++i) {
             var hand = frame.hands[i];
@@ -390,15 +401,22 @@
         var targetVelAttrib = target.attributes['velocity'];
         var targetRandomSeedAttrib = target.attributes['randomSeed'];
 
-        if (targetPosAttrib.buffer && sourcePosAttrib.buffer) {
+        var sourcePosBuffer = renderer.properties.get(sourcePosAttrib).__webglBuffer;
+        var sourceVelBuffer = renderer.properties.get(sourceVelAttrib).__webglBuffer;
+        var sourceRandomSeedBuffer = renderer.properties.get(sourceRandomSeedAttrib).__webglBuffer;
+        var targetPosBuffer = renderer.properties.get(targetPosAttrib).__webglBuffer;
+        var targetVelBuffer = renderer.properties.get(targetVelAttrib).__webglBuffer;
+        var targetRandomSeedBuffer = renderer.properties.get(targetRandomSeedAttrib).__webglBuffer;
+
+        if (targetPosBuffer && sourcePosBuffer) {
           shader.bind();
 
           gl.enableVertexAttribArray( shader.attributes.position );
-          gl.bindBuffer(gl.ARRAY_BUFFER, sourcePosAttrib.buffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER, sourcePosBuffer);
           gl.vertexAttribPointer( shader.attributes.position, 4, gl.FLOAT, false, 16, 0 );
 
           gl.enableVertexAttribArray( shader.attributes.velocity );
-          gl.bindBuffer(gl.ARRAY_BUFFER, sourceVelAttrib.buffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER, sourceVelBuffer);
           gl.vertexAttribPointer( shader.attributes.velocity, 4, gl.FLOAT, false, 16, 0 );
 
           gl.enableVertexAttribArray( shader.attributes.origin );
@@ -406,18 +424,18 @@
           gl.vertexAttribPointer( shader.attributes.origin, 4, gl.FLOAT, false, 16, 0 );
 
           gl.enableVertexAttribArray( shader.attributes.randomSeed );
-          gl.bindBuffer(gl.ARRAY_BUFFER, sourceRandomSeedAttrib.buffer);
+          gl.bindBuffer(gl.ARRAY_BUFFER, sourceRandomSeedBuffer);
           gl.vertexAttribIPointer( shader.attributes.randomSeed, 1, gl.UNSIGNED_INT, 0, 0 );
 
           gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, transformFeedback);
-          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, targetPosAttrib.buffer);
-          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, targetVelAttrib.buffer);
-          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, targetRandomSeedAttrib.buffer);
+          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, targetPosBuffer);
+          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, targetVelBuffer);
+          gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, targetRandomSeedBuffer);
 
           gl.enable(gl.RASTERIZER_DISCARD);
           gl.beginTransformFeedback(gl.POINTS);
 
-          gl.drawArrays(gl.POINTS, 0, sourcePosAttrib.length / sourcePosAttrib.itemSize);
+          gl.drawArrays(gl.POINTS, 0, sourcePosAttrib.count /* sourcePosAttrib.itemSize*/);
 
           gl.endTransformFeedback();
           gl.disable(gl.RASTERIZER_DISCARD);
@@ -437,9 +455,9 @@
       function render(t) {
         requestAnimationFrame(render);
 
-        updateHands();
+        updateColliders();
 
-        if (isWebGL2) {
+        if (isWebGL2 && mesh) {
           var lastTime = simulationShader.getTime(t);
           if (t - lastTime > fixedStep * 5) {
             simulationShader.setTime(t);
