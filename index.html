@@ -183,11 +183,11 @@
           scene.add( controller2 );
 
           var loader = new THREE.OBJLoader();
-          loader.setPath( 'models/vive-controller/' );
+          loader.setPath( 'media/models/vive-controller/' );
           loader.load( 'vr_controller_vive_1_5.obj', function ( object ) {
 
             var loader = new THREE.TextureLoader();
-            loader.setPath( 'models/vive-controller/' );
+            loader.setPath( 'media/models/vive-controller/' );
 
             var controller = object.children[ 0 ];
             controller.material.map = loader.load( 'onepointfive_texture.png' );
@@ -214,9 +214,9 @@
         }
 
         var textureLoader = new THREE.TextureLoader();
-        var backImage = textureLoader.load("media/Back.png");
-        var ceilImage = textureLoader.load("media/Ceiling.png");
-        var floorImage = textureLoader.load("media/Floor.png");
+        var backImage = textureLoader.load("media/textures/Back.png");
+        var ceilImage = textureLoader.load("media/textures/Ceiling.png");
+        var floorImage = textureLoader.load("media/textures/Floor.png");
 
         var roomMaterialArray = [
           new THREE.MeshBasicMaterial({ map: backImage, side: THREE.BackSide }),
@@ -237,7 +237,7 @@
           // Start Creation of DataTexture
 
           var fontLoader = new THREE.FontLoader();
-          fontLoader.load( 'fonts/helvetiker_bold.typeface.json', function ( font ) {
+          fontLoader.load( 'media/fonts/helvetiker_bold.typeface.json', function ( font ) {
 
             var textGeo = new THREE.TextGeometry( "WebGL 2", {
               size: 1.0,
@@ -524,11 +524,13 @@
       function render(t) {
         effect.requestAnimationFrame( render );
 
-        vrControls.update();
-
-        updateColliders();
+        if (vrControls) {
+          vrControls.update();
+        }
 
         if (isWebGL2 && mesh) {
+          updateColliders();
+
           var lastTime = simulationShader.getTime(t);
           if (t - lastTime > fixedStep * 5) {
             simulationShader.setTime(t);
