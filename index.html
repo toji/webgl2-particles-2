@@ -37,6 +37,12 @@
     <script src="js/SimulationShader.js"></script>
     <script src="js/GeometryUtils.js"></script>
     <script src="js/Projector.js"></script>
+    <script src="js/VRControls.js"></script>
+    <script src="js/VREffect.js"></script>
+    <script src="js/ViveController.js"></script>
+    <script src="js/WebVR.js"></script>
+
+    <script src="js/OBJLoader.js"></script>
 
     <script src="js/leap-0.6.4.min.js"></script>
     <script src="js/leap-plugins-0.1.6.1.js"></script>
@@ -85,6 +91,9 @@
         return parseInt(value, 10);
       }
 
+      var roomSize = new THREE.Vector3(3, 3, 3);
+      var textScale = 0.3;
+
       var container, canvas, gl;
 
       var scene, camera, light, renderer;
@@ -96,8 +105,6 @@
       var transformFeedback;
       var originBuffer;
       var font;
-
-      var controls;
 
       var fboParticles, rtTexturePos, rtTexturePos2, simulationShader;
 
@@ -113,7 +120,7 @@
 
       var pickCoord = new THREE.Vector3(0.0, 0.0, 0.0);
       var pickRay = new THREE.Ray();
-      var clickPlane = new THREE.Plane(new THREE.Vector3(0.0, 0.0, 1.0), 0.0);
+      var clickPlane = new THREE.Plane(new THREE.Vector3(0.0, 0.0, 1.0), roomSize.z*0.25);
 
       var mouseCoordQueue = [];
 
@@ -124,6 +131,10 @@
       var showColliders = false;
 
       var leapController = new Leap.Controller();
+
+      var vrControls;
+      var effect;
+      var controller1, controller2;
 
       var isWebGL2 = false;
 
@@ -148,11 +159,46 @@
 
         scene = new THREE.Scene();
 
-        camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 1024 );
-        camera.position.y = 1.5;
-        camera.position.z = 4;
-        camera.lookAt( scene.position );
+        camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.01, roomSize.z * 10 );
+        camera.position.y = (roomSize.y/2) + 0.2;
+        camera.position.z = roomSize.z*0.1;
+        camera.lookAt( new THREE.Vector3(0, roomSize.y/2, -roomSize.z*0.25));
         scene.add( camera );
+
+        effect = new THREE.VREffect( renderer );
+
+        if ( WEBVR.isAvailable() === true ) {
+          vrCamera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.01, roomSize.z * 10 );
+          scene.add( vrCamera );
+
+          vrControls = new THREE.VRControls( vrCamera );
+          vrControls.standing = true;
+
+          controller1 = new THREE.ViveController( 0 );
+          controller1.standingMatrix = vrControls.getStandingMatrix();
+          scene.add( controller1 );
+
+          controller2 = new THREE.ViveController( 1 );
+          controller2.standingMatrix = vrControls.getStandingMatrix();
+          scene.add( controller2 );
+
+          var loader = new THREE.OBJLoader();
+          loader.setPath( 'models/vive-controller/' );
+          loader.load( 'vr_controller_vive_1_5.obj', function ( object ) {
+
+            var loader = new THREE.TextureLoader();
+            loader.setPath( 'models/vive-controller/' );
+
+            var controller = object.children[ 0 ];
+            controller.material.map = loader.load( 'onepointfive_texture.png' );
+            controller.material.specularMap = loader.load( 'onepointfive_spec.png' );
+
+            controller1.add( object.clone() );
+            controller2.add( object.clone() );
+          } );
+
+          document.body.appendChild( WEBVR.getButton( effect ) );
+        }
 
         showColliders = getQueryValue('colliders', 0) != 0;
         var fingerMaterial = new THREE.MeshPhongMaterial({ color: 0x00DD22 });
@@ -181,16 +227,17 @@
           new THREE.MeshBasicMaterial({ map: backImage, side: THREE.BackSide })
         ];
         var roomMaterial = new THREE.MeshFaceMaterial( roomMaterialArray );
-        var roomGeometry = new THREE.BoxGeometry( 10.24, 4, 5.12 );
+        var roomGeometry = new THREE.BoxGeometry( roomSize.x, roomSize.y, roomSize.z );
         roomMesh = new THREE.Mesh( roomGeometry, roomMaterial );
         roomMesh.doubleSided = true;
+        roomMesh.position.y = roomSize.y/2;
         scene.add( roomMesh );
 
         if (isWebGL2) {
           // Start Creation of DataTexture
 
           var fontLoader = new THREE.FontLoader();
-          fontLoader.load( 'fonts/helvetiker_bold.typeface.js', function ( font ) {
+          fontLoader.load( 'fonts/helvetiker_bold.typeface.json', function ( font ) {
 
             var textGeo = new THREE.TextGeometry( "WebGL 2", {
               size: 1.0,
@@ -262,6 +309,10 @@
             simulationShader.setColliders(colliders);
 
             mesh = new THREE.Points(geometry, material);
+            mesh.position.z = -roomSize.z*0.25;
+            mesh.position.y = roomSize.y/2;
+            // Should probably be linked to the room size somehow.
+            mesh.scale.set(textScale, textScale, textScale); 
             scene.add(mesh);
 
           } );
@@ -310,7 +361,8 @@
       function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
-        renderer.setSize( window.innerWidth, window.innerHeight );
+        //renderer.setSize( window.innerWidth, window.innerHeight );
+        effect.setSize( window.innerWidth, window.innerHeight );
       }
 
       window.addEventListener( 'resize', onWindowResize, false );
@@ -321,18 +373,24 @@
         pickCoord.z = 0.1;
         pickCoord.unproject(camera);
         pickRay.set(camera.position, pickCoord.sub(camera.position).normalize());
-        return pickRay.intersectPlane(clickPlane);
+        var point = pickRay.intersectPlane(clickPlane);
+        /*point.y -= roomSize.y/2;
+        point.x *= (1/textScale);
+        point.y *= (1/textScale);
+        point.z *= (1/textScale);*/
+        
+        return point;
       }
 
       function pointToCollider(index, active, vector, size) {
         var o = index * 4;
 
         if (active) {
-          colliders[o] = vector.x;
-          colliders[o+1] = vector.y;
-          colliders[o+2] = vector.z;
+          colliders[o] =   (vector.x - mesh.position.x) / textScale;
+          colliders[o+1] = (vector.y - mesh.position.y) / textScale;
+          colliders[o+2] = (vector.z - mesh.position.z) / textScale;
         }
-        colliders[o+3] = active ? size : -1;
+        colliders[o+3] = active ? (size / textScale) : -1;
 
         colliderMeshes[index].visible = active && showColliders;
         if (active) {
@@ -375,15 +433,26 @@
         }
 
         while (mouseCoordQueue.length) {
-          pointToCollider(fi, true, mouseCoordQueue.shift(), 0.2);
+          pointToCollider(fi, true, mouseCoordQueue.shift(), 0.05);
           fi++;
         }
 
         while (touchPoints.length) {
-          pointToCollider(fi, true, touchPoints.shift(), 0.2);
+          pointToCollider(fi, true, touchPoints.shift(), 0.05);
           fi++;
         }
 
+        if (effect.isPresenting) {
+          var vector = new THREE.Vector3();
+
+          vector.setFromMatrixPosition( controller1.matrixWorld );
+          pointToCollider(fi++, true, vector, 0.075);
+
+          vector.setFromMatrixPosition( controller2.matrixWorld );
+          pointToCollider(fi++, true, vector, 0.075);
+        }
+
+        // Turn off any remaining colliders.
         for (; fi < fingers.length; ++fi) {
           fingers[fi].active = false;
           pointToCollider(fi, false);
@@ -453,7 +522,9 @@
       var frameId = 0;
       var fixedStep = 16.666666;
       function render(t) {
-        requestAnimationFrame(render);
+        effect.requestAnimationFrame( render );
+
+        vrControls.update();
 
         updateColliders();
 
@@ -479,11 +550,13 @@
             frameId++;
           }
 
+          material.uniforms.pointSize.value = effect.isPresenting ? pointSize * 2 : pointSize;
+
           // Ugly hack to make the particle mesh always draw last
           scene.remove( mesh ); scene.add( mesh );
         }
 
-        renderer.render( scene, camera );
+        effect.render( scene, effect.isPresenting ? vrCamera : camera );
       }
 
       init();
