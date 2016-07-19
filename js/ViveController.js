@@ -17,13 +17,17 @@ THREE.ViveController = function ( id ) {
 
 			var pose = gamepad.pose;
 
-			scope.position.fromArray( pose.position );
-			scope.quaternion.fromArray( pose.orientation );
-			scope.matrix.compose( scope.position, scope.quaternion, scope.scale );
-			scope.matrix.multiplyMatrices( scope.standingMatrix, scope.matrix );
-			scope.matrixWorldNeedsUpdate = true;
+			if (pose.position[0] == 0 && pose.position[1] == 0 && pose.position[2] == 0) {
+				scope.visible = false;
+			} else {
+				scope.position.fromArray( pose.position );
+				scope.quaternion.fromArray( pose.orientation );
+				scope.matrix.compose( scope.position, scope.quaternion, scope.scale );
+				scope.matrix.multiplyMatrices( scope.standingMatrix, scope.matrix );
+				scope.matrixWorldNeedsUpdate = true;
 
-			scope.visible = true;
+				scope.visible = true;
+			}
 
 		} else {
 

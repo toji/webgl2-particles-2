@@ -409,11 +409,18 @@
         pickCoord.unproject(camera);
         pickRay.set(camera.position, pickCoord.sub(camera.position).normalize());
         var point = pickRay.intersectPlane(clickPlane);
-        /*point.y -= roomSize.y/2;
-        point.x *= (1/textScale);
-        point.y *= (1/textScale);
-        point.z *= (1/textScale);*/
-        
+        return point;
+      }
+
+      function vrCameraToColliderVector() {
+        pickCoord.x = 0;
+        pickCoord.y = 0;
+        pickCoord.z = 0.1;
+        pickCoord.unproject(vrCamera);
+        //vrCamera.getWorldDirection(pickCoord);
+        //pickCoord.unproject(vrCamera);
+        pickRay.set(vrCamera.position, pickCoord.sub(vrCamera.position).normalize());
+        var point = pickRay.intersectPlane(clickPlane);
         return point;
       }
 
@@ -485,6 +492,22 @@
 
           vector.setFromMatrixPosition( controller2.matrixWorld );
           pointToCollider(fi++, true, vector, 0.075);
+
+          var buttonPushed = false;
+          var gamepads = navigator.getGamepads();
+          for (var i = 0; i < gamepads.length; ++i) {
+            var gamepad = gamepads[i];
+            if (gamepad && gamepad.buttons[0].pressed) {
+              buttonPushed = true;
+            }
+          }
+
+          if (buttonPushed) {
+            var gazePoint = vrCameraToColliderVector();
+            if (gazePoint) {
+              pointToCollider(fi++, true, gazePoint, 0.075);
+            }
+          }
         }
 
         // Turn off any remaining colliders.
