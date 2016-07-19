@@ -138,6 +138,39 @@
 
       var isWebGL2 = false;
 
+      function getFullscreenButton ( renderer ) {
+
+        var button = document.createElement( 'button' );
+        button.style.position = 'absolute';
+        button.style.right = '20px';
+        button.style.bottom = '20px';
+        button.style.width = '100px';
+        button.style.border = '0';
+        button.style.padding = '8px';
+        button.style.cursor = 'pointer';
+        button.style.backgroundColor = '#000';
+        button.style.color = '#fff';
+        button.style.fontFamily = 'sans-serif';
+        button.style.fontSize = '13px';
+        button.style.fontStyle = 'normal';
+        button.style.textAlign = 'center';
+        button.style.zIndex = '999';
+        button.textContent = 'FULLSCREEN';
+        button.onclick = function() {
+          if (renderer.domElement.requestFullscreen) {
+            renderer.domElement.requestFullscreen();
+          } else if (renderer.domElement.webkitRequestFullscreen) {
+            renderer.domElement.webkitRequestFullscreen();
+          } else if (renderer.domElement.mozRequestFullscreen) {
+            renderer.domElement.mozRequestFullscreen();
+          }
+        };
+
+        return button;
+
+      }
+
+
       function init() {
         container = document.createElement( 'div' );
         document.body.appendChild( container );
@@ -156,6 +189,8 @@
         renderer.setSize( window.innerWidth, window.innerHeight );
         renderer.sortObjects = false;
         container.appendChild( renderer.domElement );
+
+        document.body.appendChild( getFullscreenButton( renderer ) );
 
         scene = new THREE.Scene();
 
