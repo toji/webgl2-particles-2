@@ -115,8 +115,9 @@
 
       var maxFingers = 42;
       var fingers = [];
-      var fingertipSize = 0.18;
-      var handOffset = new THREE.Vector3(0,-2.5, 0.0);
+      var fingertipSize = 0.05;
+      var handScale = 0.06;
+      var handOffset = new THREE.Vector3(0, roomSize.y/4, -roomSize.z*0.2);
 
       var pickCoord = new THREE.Vector3(0.0, 0.0, 0.0);
       var pickRay = new THREE.Ray();
@@ -359,8 +360,8 @@
           .use('handEntry', {})
           .use('riggedHand', {
             parent: scene,
-            camera: camera,
-            scale: 0.2,
+            camera: vrCamera,
+            scale: handScale,
             offset: handOffset,
             materialOptions: {
               opacity: showColliders ? 0.5 : 1.0
@@ -427,6 +428,9 @@
       function pointToCollider(index, active, vector, size) {
         var o = index * 4;
 
+        if (index >= maxFingers)
+          return;
+
         if (active) {
           colliders[o] =   (vector.x - mesh.position.x) / textScale;
           colliders[o+1] = (vector.y - mesh.position.y) / textScale;
@@ -485,8 +489,14 @@
         }
 
         if (effect.isPresenting) {
-          var vector = new THREE.Vector3();
+          if (buttonPushed) {
+            var gazePoint = vrCameraToColliderVector();
+            if (gazePoint) {
+              pointToCollider(fi++, true, gazePoint, 0.075);
+            }
+          }
 
+          var vector = new THREE.Vector3();
           vector.setFromMatrixPosition( controller1.matrixWorld );
           pointToCollider(fi++, true, vector, 0.075);
 
@@ -499,13 +509,6 @@
             var gamepad = gamepads[i];
             if (gamepad && gamepad.buttons[0].pressed) {
               buttonPushed = true;
-            }
-          }
-
-          if (buttonPushed) {
-            var gazePoint = vrCameraToColliderVector();
-            if (gazePoint) {
-              pointToCollider(fi++, true, gazePoint, 0.075);
             }
           }
         }
