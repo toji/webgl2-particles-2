@@ -203,6 +203,8 @@
 
         effect = new THREE.VREffect( renderer );
 
+        vrCamera = undefined;
+
         if ( WEBVR.isAvailable() === true ) {
           vrCamera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.01, roomSize.z * 10 );
           scene.add( vrCamera );
