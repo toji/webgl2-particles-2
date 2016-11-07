@@ -13,7 +13,7 @@ THREE.ViveController = function ( id ) {
 
 		var gamepad = navigator.getGamepads()[ id ];
 
-		if ( gamepad !== undefined && gamepad.pose !== null ) {
+		if ( gamepad && gamepad.pose !== null ) {
 
 			var pose = gamepad.pose;
 
