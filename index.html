@@ -629,6 +629,9 @@
           scene.remove( mesh ); scene.add( mesh );
         }
 
+        // If requestAnimationFrame timestamp jumps a lot, reset it.
+        simulationShader.setTime(t);
+
         effect.render( scene, effect.isPresenting ? vrCamera : camera );
       }
 
