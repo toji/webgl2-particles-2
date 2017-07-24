@@ -102,7 +102,7 @@ THREE.VRControls = function ( object, onError ) {
 
 				}
 
-			} else {
+			} else if ( vrDisplay.getState ) {
 
 				// Deprecated API.
 				var state = vrDisplay.getState();
