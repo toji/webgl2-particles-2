@@ -235,7 +235,10 @@
             controller2.add( object.clone() );
           } );
 
-          document.body.appendChild( WEBVR.getButton( effect ) );
+          WEBVR.getVRDisplay((display) => {
+            document.body.appendChild( WEBVR.getButton(display, canvas) );
+          });
+
         }
 
         showColliders = getQueryValue('colliders', 0) != 0;
@@ -627,10 +630,10 @@
 
           // Ugly hack to make the particle mesh always draw last
           scene.remove( mesh ); scene.add( mesh );
-        }
 
-        // If requestAnimationFrame timestamp jumps a lot, reset it.
-        simulationShader.setTime(t);
+          // If requestAnimationFrame timestamp jumps a lot, reset it.
+          simulationShader.setTime(t);
+        }
 
         effect.render( scene, effect.isPresenting ? vrCamera : camera );
       }
