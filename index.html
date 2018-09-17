@@ -598,6 +598,7 @@
 
       var frameId = 0;
       var fixedStep = 16.666666;
+      var remainder = 0;
       function render(t) {
         effect.requestAnimationFrame( render );
 
@@ -614,7 +615,7 @@
             lastTime = t - fixedStep;
           }
 
-          while (t - lastTime >= fixedStep) {
+          while (remainder + t - lastTime >= fixedStep) {
             lastTime += fixedStep;
             simulationShader.setTime(lastTime);
 
@@ -634,6 +635,7 @@
           // Ugly hack to make the particle mesh always draw last
           scene.remove( mesh ); scene.add( mesh );
 
+          remainder = t - lastTime;
           // If requestAnimationFrame timestamp jumps a lot, reset it.
           simulationShader.setTime(t);
         }
