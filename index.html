@@ -113,6 +113,7 @@
 
       var particleCount = getQueryValue('particleCount', 500000);
       var pointSize = getQueryValue('pointSize', 1);
+      var skipRemainder = getQueryValue('skipRemainder', 0);
 
       var INT_MAX = 2147483647;
 
@@ -635,7 +636,11 @@
           // Ugly hack to make the particle mesh always draw last
           scene.remove( mesh ); scene.add( mesh );
 
-          remainder = t - lastTime;
+          // Unless asked not to, accumulate the remainder of time for the next frame.
+          // Flag acts as a sort of regression test for http://crbug.com/883871 .
+          if (!skipRemainder)
+            remainder = t - lastTime;
+
           // If requestAnimationFrame timestamp jumps a lot, reset it.
           simulationShader.setTime(t);
         }
